@@ -3,389 +3,162 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Time Tracking Dashboard (Firebase + Auth)</title>
+    <title>Firebase Financial Dashboard</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        /* General Styles */
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            padding: 15px;
-            max-width: 1300px;
-            margin: auto;
-            background-color: #f8f9fa;
-            color: #343a40;
-            line-height: 1.6;
-        }
-        h1, h2, h3 {
-            color: #2c5282;
-            margin-top: 0;
-            margin-bottom: 0.75rem;
-        }
-        h1 {
-            text-align: center;
-            margin-bottom: 1.5rem;
-            font-size: 2.2rem;
-        }
-        h2 {
-            font-size: 1.5rem;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        /* Auth Section */
-        .auth-section {
-            text-align: right;
-            margin-bottom: 1rem;
-            padding: 10px;
-            background-color: #fff;
-            border-radius: 6px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            gap: 15px;
-        }
-        #userStatus {
-            font-size: 0.9rem;
-            color: #4a5568;
-        }
-        #loginBtn, #logoutBtn {
-             padding: 8px 15px; /* Smaller buttons */
-             font-size: 0.9rem;
-        }
-        #logoutBtn {
-            background-color: #e53e3e; /* Red */
-        }
-         #logoutBtn:hover {
-            background-color: #c53030;
-        }
-
-        /* Layout & Cards */
-        .container {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 25px;
-        }
-        @media (min-width: 992px) {
-            .container {
-                grid-template-columns: 400px 1fr;
-            }
-        }
-        .card {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            padding: 25px;
-            overflow: hidden;
-        }
-        /* Form Styles */
-        .form-group {
-            margin-bottom: 1.1rem;
-        }
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #4a5568;
-        }
-        input[type="text"],
-        input[type="datetime-local"],
-        select,
-        input:read-only:disabled { /* Style disabled inputs */
-            width: 100%;
-            padding: 11px 14px;
-            border: 1px solid #cbd5e0;
-            border-radius: 6px;
-            font-size: 1rem;
-            box-sizing: border-box;
-            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-            background-color: #fff;
-        }
-         input:read-only:disabled {
-             background-color: #edf2f7; /* Lighter gray for disabled */
-             cursor: not-allowed;
-             opacity: 0.7;
-         }
-        input:focus, select:focus {
-            border-color: #4299e1;
-            outline: 0;
-            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
-        }
-        fieldset#timeEntryFieldset:disabled { /* Style disabled fieldset */
-             opacity: 0.6;
-             pointer-events: none; /* Prevent interactions */
-         }
-
-        /* Button Styles */
-        button {
-            background-color: #3182ce;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
-            transition: background-color 0.2s ease-in-out, box-shadow 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            white-space: nowrap;
-        }
-        button:hover:not(:disabled) { /* Add :not(:disabled) */
-            background-color: #2b6cb0;
-            box-shadow: 0 3px 7px rgba(0, 0, 0, 0.1);
-        }
-        button:disabled {
-            background-color: #a0aec0;
-            cursor: not-allowed;
-            box-shadow: none;
-        }
-        button i {
-            font-size: 0.9em;
-        }
-        .btn-success { background-color: #38a169; }
-        .btn-success:hover:not(:disabled) { background-color: #2f855a; }
-        .btn-secondary { background-color: #718096; }
-        .btn-secondary:hover:not(:disabled) { background-color: #4a5568; }
-
-        /* Dashboard Area */
-        .dashboard-area {
-            display: flex;
-            flex-direction: column;
-            gap: 25px;
-        }
-        /* Summary Statistics */
-        .summary-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 20px;
-        }
-        .stat-card {
-            background: #ebf8ff;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            border: 1px solid #bee3f8;
-        }
-        .stat-card h3 {
-            margin-top: 0;
-            color: #2b6cb0;
-            font-size: 0.95rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .stat-card p {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #2c5282;
-            margin-bottom: 0;
-        }
-        /* Filters */
-        .filter-section {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            align-items: flex-end;
-            background: #ffffff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-        }
-        .filter-section .form-group {
-            flex: 1 1 220px;
-            margin-bottom: 0;
-        }
-        .filter-section button {
-            flex-shrink: 0;
-        }
-        /* Chart Area */
-        .chart-container {
-            position: relative; /* Needed for loading overlay */
-        }
-        .chart-title {
-            text-align: center;
-            font-weight: 600;
-            color: #2c5282;
-            margin-bottom: 15px;
-            font-size: 1.2rem;
-        }
-        svg#hoursChart {
-            width: 100%;
-            min-height: 380px;
-            display: block;
-            background-color: #fff;
-            border-radius: 6px;
-            padding: 15px;
-            box-sizing: border-box;
-        }
-        /* Tooltip */
-        .tooltip {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.85);
-            color: white;
-            border-radius: 4px;
-            padding: 9px 13px;
-            pointer-events: none;
-            font-size: 0.9rem;
-            z-index: 10;
-            white-space: nowrap;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
-        /* Notification Area */
-        #notification-area {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            width: auto;
-            max-width: 90%;
-        }
-        .notification {
-            padding: 12px 25px;
-            margin: 5px 0;
-            border-radius: 6px;
-            color: white;
-            opacity: 1;
-            transition: opacity 0.5s ease-out, transform 0.3s ease-out;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-            transform: translateY(0);
-            text-align: center;
-            font-weight: 500;
-        }
-        .notification.success { background-color: #38a169; }
-        .notification.error { background-color: #e53e3e; }
-        .notification.info { background-color: #3182ce; }
-        .notification.fade-out {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        /* Loading State */
-        .loading-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.75); /* Slightly more opaque */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 5;
-            border-radius: 8px;
-            transition: opacity 0.3s ease-in-out; /* Add transition */
-            opacity: 0; /* Hidden by default */
-            pointer-events: none; /* Allow clicks through when hidden */
-        }
-         .loading-overlay.visible {
-             opacity: 1;
-             pointer-events: auto;
-         }
-        .loading-overlay i {
-            font-size: 2.5rem; /* Larger spinner */
-            color: #3182ce;
-        }
+        /* --- Styles (Keep your existing CSS styles here) --- */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 15px; max-width: 1200px; margin: auto; background-color: #f5f7fa; color: #333; }
+        h1, h2, h3 { color: #2c3e50; margin-top: 0; }
+        h1 { text-align: center; margin-bottom: 25px; }
+        .dashboard-container { display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 30px; }
+        @media (min-width: 768px) { .dashboard-container { grid-template-columns: 1fr 1fr; } }
+        .card { background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); padding: 20px; overflow: hidden; }
+        svg { width: 100%; height: 300px; margin-top: 10px; display: block; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px 15px; border-bottom: 1px solid #e0e0e0; text-align: left; vertical-align: middle; }
+        th { background-color: #3498db; color: white; font-weight: 500; white-space: nowrap; }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        tr:hover { background-color: #f1f7fd; }
+        .actions-cell { display: flex; gap: 8px; white-space: nowrap; }
+        .tooltip { position: absolute; background: rgba(0,0,0,0.8); color: white; border-radius: 4px; padding: 8px 12px; pointer-events: none; font-size: 14px; z-index: 10; white-space: nowrap; }
+        .summary-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.06); text-align: center; }
+        .stat-card h3 { margin-top: 0; color: #7f8c8d; font-size: 14px; margin-bottom: 5px; }
+        .stat-card p { font-size: 22px; font-weight: bold; color: #2c3e50; margin-bottom: 0; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; color: #34495e; }
+        input[type="text"], input[type="number"], input[type="date"], input[type="datetime-local"], select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; box-sizing: border-box; }
+        button { background-color: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 14px; transition: background-color 0.3s, box-shadow 0.2s; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+        button:hover { background-color: #2980b9; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        button i { font-size: 1em; }
+        .btn-danger { background-color: #e74c3c; } .btn-danger:hover { background-color: #c0392b; }
+        .btn-success { background-color: #2ecc71; } .btn-success:hover { background-color: #27ae60; }
+        .btn-warning { background-color: #f39c12; } .btn-warning:hover { background-color: #e67e22; }
+        .btn-secondary { background-color: #95a5a6; } .btn-secondary:hover { background-color: #7f8c8d; }
+        .filter-section { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; margin-bottom: 25px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.06); }
+        .filter-section .form-group { flex: 1 1 180px; margin-bottom: 0; }
+        .filter-section button { flex-shrink: 0; }
+        .chart-title { text-align: center; font-weight: 500; color: #34495e; margin-bottom: 15px; }
+        .tabs { display: flex; flex-wrap: wrap; margin-bottom: 20px; border-bottom: 1px solid #ddd; }
+        .tab { padding: 10px 20px; cursor: pointer; border-bottom: 3px solid transparent; color: #7f8c8d; transition: border-color 0.3s, color 0.3s; white-space: nowrap; }
+        .tab:hover { color: #3498db; }
+        .tab.active { border-bottom: 3px solid #3498db; font-weight: 500; color: #34495e; }
+        .tab-content { display: none; } .tab-content.active { display: block; }
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); padding-top: 60px; }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 25px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: relative; }
+        .modal-header { padding-bottom: 15px; border-bottom: 1px solid #eee; margin-bottom: 20px; }
+        .modal-header h2 { margin: 0; color: #2c3e50; }
+        .close-button { color: #aaa; position: absolute; top: 10px; right: 15px; font-size: 28px; font-weight: bold; line-height: 1; }
+        .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
+        .modal-footer { padding-top: 20px; border-top: 1px solid #eee; margin-top: 25px; text-align: right; }
+        .modal-footer button { margin-left: 10px; }
+        #notification-area { position: fixed; top: 10px; right: 10px; z-index: 1000; width: 300px; }
+        .notification { padding: 10px 20px; margin: 5px 0; border-radius: 5px; color: white; opacity: 1; transition: opacity 0.5s ease-out, transform 0.3s ease-out; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transform: translateX(0); }
+        .notification.success { background-color: #2ecc71; } .notification.error { background-color: #e74c3c; } .notification.info { background-color: #3498db; }
+        .notification.fade-out { opacity: 0; transform: translateX(20px); }
+        /* Styles for Auth Area */
+        #auth-container { text-align: center; margin: 40px 0; }
+        #user-info { margin-bottom: 15px; font-size: 16px; color: #555; }
+        #user-info img { width: 30px; height: 30px; border-radius: 50%; vertical-align: middle; margin-right: 8px; }
+        #main-content { display: none; /* Hidden initially */ }
+        #loading-indicator { text-align: center; padding: 30px; font-size: 18px; color: #555; }
     </style>
 </head>
 <body>
+    <h1>Firebase Financial Dashboard</h1>
 
-    <div class="auth-section">
-        <span id="userStatus">Please log in.</span>
-        <button id="loginBtn" onclick="signInWithGoogle()"><i class="fab fa-google"></i> Sign In with Google</button>
-        <button id="logoutBtn" onclick="signOut()" style="display: none;"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
+    <div id="auth-container">
+        <div id="user-info" style="display: none;">
+            <img id="user-photo" src="" alt="User photo">
+            <span id="user-name"></span> |
+            <button id="sign-out-button" class="btn-secondary"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
+        </div>
+        <button id="sign-in-button"><i class="fab fa-google"></i> Sign in with Google</button>
     </div>
 
-    <h1>Emploii Time Tracking Dashboard</h1>
-
-    <div class="container">
-        <div class="card">
-            <h2><i class="fas fa-clock"></i> Log New Time Entry</h2>
-            <fieldset id="timeEntryFieldset" disabled>
-                <form id="addTimeEntryForm">
-                    <div class="form-group">
-                        <label for="employeeName">Employee Name</label>
-                        <input type="text" id="employeeName" list="employeeDataList" placeholder="e.g., Jane Doe" required>
-                        <datalist id="employeeDataList"></datalist>
-                    </div>
-                    <div class="form-group">
-                        <label for="projectName">Project / Task</label>
-                        <input type="text" id="projectName" list="projectDataList" placeholder="e.g., Website Redesign" required>
-                        <datalist id="projectDataList"></datalist>
-                    </div>
-                    <div class="form-group">
-                        <label for="startTime">Start Time</label>
-                        <input type="datetime-local" id="startTime" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="endTime">End Time</label>
-                        <input type="datetime-local" id="endTime" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="durationDisplay">Duration (Hours)</label>
-                        <input type="text" id="durationDisplay" readonly disabled>
-                    </div>
-                    <button type="submit" class="btn-success" style="width: 100%;">
-                        <i class="fas fa-save"></i> Save Time Entry
-                    </button>
-                </form>
-            </fieldset>
+    <div id="main-content">
+        <div id="loading-indicator">Loading data...</div>
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('dashboard')" role="tab" aria-selected="true" aria-controls="dashboard-tab" id="dashboard-nav">Dashboard</div>
+            <div class="tab" onclick="switchTab('data-entry')" role="tab" aria-selected="false" aria-controls="data-entry-tab" id="data-entry-nav">Data Entry</div>
+            <div class="tab" onclick="switchTab('settings')" role="tab" aria-selected="false" aria-controls="settings-tab" id="settings-nav">Settings</div>
         </div>
 
-        <div class="dashboard-area">
+        <div id="dashboard-tab" class="tab-content active" role="tabpanel" aria-labelledby="dashboard-nav">
             <div class="summary-stats">
-                <div class="stat-card">
-                    <h3>Total Hours Tracked</h3>
-                    <p id="totalHours">0.00</p>
-                </div>
-                <div class="stat-card">
-                    <h3>Total Entries</h3>
-                    <p id="totalEntriesCount">0</p>
-                </div>
+                <div class="stat-card"> <h3>Total Amount</h3> <p id="totalAmount">$0.00</p> </div>
+                <div class="stat-card"> <h3>Average per Entry</h3> <p id="averageAmount">$0.00</p> </div>
+                <div class="stat-card"> <h3>Categories</h3> <p id="categoryCount">0</p> </div>
+                <div class="stat-card"> <h3>Entries</h3> <p id="entryCount">0</p> </div>
             </div>
-
-            <div class="filter-section">
-                <div class="form-group">
-                    <label for="employeeFilter">Filter by Employee</label>
-                    <select id="employeeFilter">
-                        <option value="">All Employees</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="projectFilter">Filter by Project</label>
-                    <select id="projectFilter">
-                        <option value="">All Projects</option>
-                    </select>
-                </div>
-                <button type="button" id="applyFilterBtn" onclick="loadAndDrawDashboard()" title="Apply filters" disabled>
-                    <i class="fas fa-filter"></i> Apply Filters
-                </button>
-                <button id="exportBtn" onclick="exportCSV()" class="btn-secondary" title="Export all time data as CSV file" disabled>
-                    <i class="fas fa-file-csv"></i> Export CSV
-                </button>
+            <div class="filter-section card">
+                <div class="form-group"> <label for="startDate">Start Date</label> <input type="date" id="startDate" aria-label="Filter start date"> </div>
+                <div class="form-group"> <label for="endDate">End Date</label> <input type="date" id="endDate" aria-label="Filter end date"> </div>
+                <div class="form-group"> <label for="categoryFilter">Category</label> <select id="categoryFilter" aria-label="Filter category"> <option value="">All Categories</option> </select> </div>
+                <button type="button" onclick="applyFiltersAndDraw()"> <i class="fas fa-filter"></i> Apply Filters </button>
             </div>
-
-            <div class="card chart-container" id="chartCard">
-                <div class="chart-title">Total Hours by Project</div>
-                <svg id="hoursChart"></svg>
-                <div class="loading-overlay"><i class="fas fa-spinner fa-spin"></i></div>
+            <div class="dashboard-container">
+                <div class="card"> <div class="chart-title">Spending by Category</div> <svg id="barChart" role="img" aria-label="Bar chart showing spending by category"></svg> </div>
+                <div class="card"> <div class="chart-title">Spending Distribution</div> <svg id="pieChart" role="img" aria-label="Pie chart showing spending distribution by category"></svg> </div>
+            </div>
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                    <h2 style="margin: 0;">Transaction History</h2>
+                    </div>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead> <tr> <th>Date</th> <th>Category</th> <th>Amount</th> <th>Notes</th> <th>Actions</th> </tr> </thead>
+                        <tbody id="entryTable"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div id="notification-area"></div>
+        <div id="data-entry-tab" class="tab-content" role="tabpanel" aria-labelledby="data-entry-nav">
+            <div class="card">
+                <h2>Add New Entry</h2>
+                <form id="addDataForm">
+                    <div class="form-group"> <label for="entryDate">Date & Time</label> <input type="datetime-local" id="entryDate" required aria-required="true"> </div>
+                    <div class="form-group"> <label for="category">Category</label> <input type="text" id="category" list="categories" placeholder="Enter or select category" required aria-required="true"> <datalist id="categories"></datalist> </div>
+                    <div class="form-group"> <label for="amount">Amount</label> <input type="number" id="amount" placeholder="0.00" step="0.01" required aria-required="true"> </div>
+                    <div class="form-group"> <label for="notes">Notes</label> <input type="text" id="notes" placeholder="Optional notes"> </div>
+                    <button type="submit" class="btn-success"> <i class="fas fa-plus"></i> Add Entry </button>
+                </form>
+            </div>
+        </div>
 
-    <div class="tooltip" style="opacity: 0;"></div>
+        <div id="settings-tab" class="tab-content" role="tabpanel" aria-labelledby="settings-nav">
+            <div class="card">
+                <h2>Settings</h2>
+                <div class="form-group"> <label for="currencySymbol">Currency Symbol</label> <input type="text" id="currencySymbol" value="$" maxlength="3" aria-label="Currency symbol"> </div>
+                <div class="form-group"> <label for="defaultDateRange">Default Date Range</label> <select id="defaultDateRange" aria-label="Default date range"> <option value="7">Last 7 days</option> <option value="30" selected>Last 30 days</option> <option value="90">Last 90 days</option> <option value="365">Last year</option> <option value="0">All time</option> </select> </div>
+                <button onclick="saveSettings()" class="btn-success"> <i class="fas fa-save"></i> Save Settings </button>
+                <button onclick="clearAllData()" class="btn-danger" style="margin-left: 10px;"> <i class="fas fa-trash"></i> Clear All Entries </button>
+            </div>
+        </div>
+
+        <div id="editModal" class="modal" aria-modal="true" role="dialog" aria-labelledby="editModalTitle">
+            <div class="modal-content">
+                <div class="modal-header"> <h2 id="editModalTitle">Edit Entry</h2> <span class="close-button" onclick="closeModal()" aria-label="Close">&times;</span> </div>
+                <form id="editDataForm">
+                    <input type="hidden" id="editEntryId"> <div class="form-group"> <label for="editEntryDate">Date & Time</label> <input type="datetime-local" id="editEntryDate" required aria-required="true"> </div>
+                    <div class="form-group"> <label for="editCategory">Category</label> <input type="text" id="editCategory" list="categories" placeholder="Enter or select category" required aria-required="true"> </div>
+                    <div class="form-group"> <label for="editAmount">Amount</label> <input type="number" id="editAmount" placeholder="0.00" step="0.01" required aria-required="true"> </div>
+                    <div class="form-group"> <label for="editNotes">Notes</label> <input type="text" id="editNotes" placeholder="Optional notes"> </div>
+                    <div class="modal-footer"> <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button> <button type="submit" class="btn-success"> <i class="fas fa-save"></i> Save Changes </button> </div>
+                </form>
+            </div>
+        </div>
+    </div> <div id="notification-area"></div>
 
     <script>
         // --- Firebase Configuration ---
-        // IMPORTANT: Replace with your actual Firebase project configuration
+        // IMPORTANT: Replace with your project's Firebase configuration object
         const firebaseConfig = {
     apiKey: "AIzaSyBR5uHjAAqVWgaK0RgLrp7U-uszq0Fd_c0",
     authDomain: "timetracker-33160.firebaseapp.com",
@@ -398,424 +171,449 @@
         };
 
         // --- Initialize Firebase ---
-        let db; // Realtime Database reference
-        let auth; // Auth service reference
-        let googleProvider; // Google Auth Provider
-
-        try {
-            if (!firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-            }
-            db = firebase.database();
-            auth = firebase.auth();
-            googleProvider = new firebase.auth.GoogleAuthProvider(); // Initialize Google provider
-            console.log("Firebase Initialized Successfully.");
-        } catch (error) {
-            console.error("Firebase initialization error:", error);
-            showNotification("CRITICAL: Firebase initialization failed. Check console and config.", "error");
-            // Keep UI disabled if Firebase fails
-        }
+        firebase.initializeApp(firebaseConfig);
+        const fbAuth = firebase.auth();
+        const fbDb = firebase.database();
 
         // --- Global Variables ---
-        const tooltip = d3.select(".tooltip");
-        let isLoading = false;
-        let currentUser = null; // Store current user info
+        let currentUser = null;
+        let currencySymbol = "$";
+        let defaultDateRange = "30";
+        let allEntries = []; // Local cache of user's entries from Firebase
 
-        // --- DOM Elements ---
-        const loginBtn = document.getElementById('loginBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const userStatus = document.getElementById('userStatus');
-        const timeEntryFieldset = document.getElementById('timeEntryFieldset');
-        const applyFilterBtn = document.getElementById('applyFilterBtn');
-        const exportBtn = document.getElementById('exportBtn');
-        const loadingOverlay = document.querySelector('.loading-overlay');
+        const tooltip = d3.select("body").append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0);
 
+        // UI Elements
+        const authContainer = document.getElementById('auth-container');
+        const userInfoDiv = document.getElementById('user-info');
+        const userNameSpan = document.getElementById('user-name');
+        const userPhotoImg = document.getElementById('user-photo');
+        const signInButton = document.getElementById('sign-in-button');
+        const signOutButton = document.getElementById('sign-out-button');
+        const mainContentDiv = document.getElementById('main-content');
+        const loadingIndicator = document.getElementById('loading-indicator');
 
-        // --- Authentication Logic ---
+        // --- Authentication ---
+        signInButton.addEventListener('click', signInWithGoogle);
+        signOutButton.addEventListener('click', signOutUser);
+
         function signInWithGoogle() {
-            if (!auth) return;
-            auth.signInWithPopup(googleProvider)
+            const provider = new firebase.auth.GoogleAuthProvider();
+            fbAuth.signInWithPopup(provider)
                 .then((result) => {
-                    // This gives you a Google Access Token. You can use it to access the Google API.
-                    // const credential = result.credential;
-                    // const token = credential.accessToken;
-                    // The signed-in user info.
-                    // const user = result.user;
-                    showNotification(`Welcome, ${result.user.displayName}!`, 'info');
-                }).catch((error) => {
+                    console.log("Signed in successfully:", result.user);
+                    // Auth state change will handle UI updates
+                })
+                .catch((error) => {
                     console.error("Google Sign-In Error:", error);
-                    showNotification(`Sign-in failed: ${error.message}`, 'error');
+                    showNotification(`Sign-in failed: ${error.message}`, "error");
                 });
         }
 
-        function signOut() {
-            if (!auth) return;
-            auth.signOut().then(() => {
-                // Sign-out successful. Handled by onAuthStateChanged
-                showNotification("You have been signed out.", 'info');
-            }).catch((error) => {
-                console.error("Sign Out Error:", error);
-                showNotification(`Sign-out failed: ${error.message}`, 'error');
-            });
+        function signOutUser() {
+            fbAuth.signOut()
+                .then(() => {
+                    console.log("Signed out successfully.");
+                    // Auth state change will handle UI updates
+                })
+                .catch((error) => {
+                    console.error("Sign Out Error:", error);
+                    showNotification(`Sign-out failed: ${error.message}`, "error");
+                });
         }
 
-        // Listener for authentication state changes
-        function setupAuthListener() {
-            if (!auth) return;
-            auth.onAuthStateChanged((user) => {
-                currentUser = user; // Update global user state
-                if (user) {
-                    // User is signed in
-                    userStatus.textContent = `Logged in as: ${user.displayName || user.email}`;
-                    loginBtn.style.display = 'none';
-                    logoutBtn.style.display = 'inline-flex';
-                    timeEntryFieldset.disabled = false; // Enable form
-                    applyFilterBtn.disabled = false;
-                    exportBtn.disabled = false;
-                    loadAndDrawDashboard(); // Load data now that user is logged in
-                } else {
-                    // User is signed out
-                    userStatus.textContent = 'Please log in.';
-                    loginBtn.style.display = 'inline-flex';
-                    logoutBtn.style.display = 'none';
-                    timeEntryFieldset.disabled = true; // Disable form
-                    applyFilterBtn.disabled = true;
-                    exportBtn.disabled = true;
-                    // Clear dashboard when logged out
-                    clearDashboard();
-                }
-            });
-        }
-
-        // --- Initialization ---
-        async function initApp() {
-            if (!db || !auth) return; // Don't proceed if Firebase failed
-            setupAuthListener(); // Set up auth listener first
-            setupEventListeners();
-            // Initial data load will happen via onAuthStateChanged when user logs in
-        }
-
-        // --- Event Listeners ---
-        function setupEventListeners() {
-            document.getElementById('addTimeEntryForm').addEventListener('submit', handleAddTimeEntry);
-            document.getElementById('startTime').addEventListener('change', calculateDuration);
-            document.getElementById('endTime').addEventListener('change', calculateDuration);
-        }
-
-        // --- Time Entry & Duration Calculation ---
-        function calculateDuration() {
-            const startTimeInput = document.getElementById('startTime').value;
-            const endTimeInput = document.getElementById('endTime').value;
-            const durationDisplay = document.getElementById('durationDisplay');
-            if (startTimeInput && endTimeInput) {
-                const start = new Date(startTimeInput);
-                const end = new Date(endTimeInput);
-                if (end > start) {
-                    const diffMillis = end - start;
-                    const diffHours = diffMillis / (1000 * 60 * 60);
-                    durationDisplay.value = diffHours.toFixed(2);
-                } else {
-                    durationDisplay.value = "End after start";
-                }
+        // Auth State Listener
+        fbAuth.onAuthStateChanged(user => {
+            if (user) {
+                // User is signed in
+                currentUser = user;
+                userNameSpan.textContent = user.displayName || user.email;
+                userPhotoImg.src = user.photoURL || 'placeholder.png'; // Provide a placeholder image path
+                userInfoDiv.style.display = 'block';
+                signInButton.style.display = 'none';
+                mainContentDiv.style.display = 'block';
+                authContainer.style.marginBottom = '10px'; // Adjust spacing
+                initAppForUser(); // Initialize data loading for the logged-in user
             } else {
-                durationDisplay.value = "";
+                // User is signed out
+                currentUser = null;
+                allEntries = []; // Clear local cache
+                userInfoDiv.style.display = 'none';
+                signInButton.style.display = 'block';
+                mainContentDiv.style.display = 'none';
+                authContainer.style.marginBottom = '40px';
+                // Clear dashboard elements if needed
+                updateSummaryStats([]);
+                drawBarChart([]);
+                drawPieChart([]);
+                updateDataTable([]);
+                populateCategoryFilters(); // Clear filters
+            }
+        });
+
+        // --- Initialization for Logged-In User ---
+        async function initAppForUser() {
+            loadingIndicator.style.display = 'block'; // Show loading
+            await loadSettings(); // Load settings first
+            setupEventListeners();
+            await loadAndDisplayData(); // Load entries and draw dashboard
+            loadingIndicator.style.display = 'none'; // Hide loading
+        }
+
+        // --- Settings Management (Firebase) ---
+        async function loadSettings() {
+            if (!currentUser) return;
+            const settingsRef = fbDb.ref(`users/${currentUser.uid}/settings`);
+            try {
+                const snapshot = await settingsRef.once('value');
+                const settings = snapshot.val();
+                currencySymbol = settings?.currencySymbol || "$";
+                defaultDateRange = settings?.defaultDateRange || "30";
+                document.getElementById("currencySymbol").value = currencySymbol;
+                document.getElementById("defaultDateRange").value = defaultDateRange;
+                setDefaultDateRange(); // Apply default date range to filters
+            } catch (error) {
+                console.error("Error loading settings from Firebase:", error);
+                showNotification("Could not load settings.", "error");
+                // Use defaults if loading fails
+                currencySymbol = "$";
+                defaultDateRange = "30";
+                setDefaultDateRange();
             }
         }
 
-        async function handleAddTimeEntry(event) {
+        async function saveSettings() {
+            if (!currentUser) return;
+            currencySymbol = document.getElementById("currencySymbol").value.trim() || "$";
+            defaultDateRange = document.getElementById("defaultDateRange").value;
+            const settingsRef = fbDb.ref(`users/${currentUser.uid}/settings`);
+            try {
+                await settingsRef.update({ // Use update to avoid overwriting other potential settings
+                    currencySymbol: currencySymbol,
+                    defaultDateRange: defaultDateRange
+                });
+                showNotification("Settings saved successfully!", "success");
+                // Re-apply filters and redraw if settings affect display (like currency)
+                applyFiltersAndDraw();
+            } catch (error) {
+                console.error("Error saving settings to Firebase:", error);
+                showNotification("Error saving settings.", "error");
+            }
+        }
+
+        function setDefaultDateRange() {
+             const days = parseInt(defaultDateRange);
+             const endDateInput = document.getElementById("endDate");
+             const startDateInput = document.getElementById("startDate");
+             if (!endDateInput || !startDateInput) return;
+             const today = new Date();
+             const formatDate = (date) => date.toISOString().split('T')[0];
+             endDateInput.value = formatDate(today);
+             if (days > 0) {
+                 const startDate = new Date();
+                 startDate.setDate(today.getDate() - days);
+                 startDateInput.value = formatDate(startDate);
+             } else {
+                 startDateInput.value = ""; // For "All time"
+             }
+         }
+
+        // --- Event Listeners Setup ---
+        function setupEventListeners() {
+             // Prevent duplicate listeners if initAppForUser is called multiple times
+            const addForm = document.getElementById('addDataForm');
+            const editForm = document.getElementById('editDataForm');
+            const closeBtn = document.querySelector('.close-button');
+
+            if (!addForm.hasAttribute('data-listener-set')) {
+                addForm.addEventListener('submit', handleAddEntry);
+                addForm.setAttribute('data-listener-set', 'true');
+            }
+            if (!editForm.hasAttribute('data-listener-set')) {
+                editForm.addEventListener('submit', handleUpdateEntry);
+                editForm.setAttribute('data-listener-set', 'true');
+            }
+             if (!closeBtn.hasAttribute('data-listener-set')) {
+                 closeBtn.addEventListener('click', closeModal);
+                 closeBtn.setAttribute('data-listener-set', 'true');
+
+                 window.addEventListener('click', (event) => {
+                    const modal = document.getElementById('editModal');
+                    if (event.target == modal) closeModal();
+                 });
+                 document.addEventListener('keydown', (event) => {
+                    if (event.key === "Escape" && document.getElementById('editModal').style.display === "block") closeModal();
+                 });
+            }
+        }
+
+        // --- CRUD Operations (Firebase) ---
+        async function handleAddEntry(event) {
             event.preventDefault();
-            // Ensure user is logged in before allowing entry
-            if (!currentUser) {
-                 showNotification("You must be logged in to save entries.", "error");
-                 return;
+            if (!currentUser) return;
+
+            const categoryInput = document.getElementById('category');
+            const amountInput = document.getElementById('amount');
+            const notesInput = document.getElementById('notes');
+            const dateInput = document.getElementById('entryDate');
+            const category = categoryInput.value.trim();
+            const amount = parseFloat(amountInput.value);
+            const notes = notesInput.value.trim();
+            let entryDate = dateInput.value;
+
+            if (!category || isNaN(amount) || amount <= 0) {
+                showNotification("Please enter a valid category and positive amount.", "error"); return;
             }
-            if (!db) { showNotification("Database not initialized.", "error"); return; }
-
-            const employeeInput = document.getElementById('employeeName');
-            const projectInput = document.getElementById('projectName');
-            const startTimeInput = document.getElementById('startTime');
-            const endTimeInput = document.getElementById('endTime');
-
-            const employeeName = employeeInput.value.trim();
-            const projectName = projectInput.value.trim();
-            const startTimeISO = startTimeInput.value ? new Date(startTimeInput.value).toISOString() : null;
-            const endTimeISO = endTimeInput.value ? new Date(endTimeInput.value).toISOString() : null;
-
-            if (!employeeName || !projectName || !startTimeISO || !endTimeISO) {
-                showNotification("Please fill in all fields.", "error"); return;
+            if (!entryDate) { /* Set default date if needed */
+                const now = new Date();
+                const year = now.getFullYear(); const month = (now.getMonth() + 1).toString().padStart(2, '0'); const day = now.getDate().toString().padStart(2, '0'); const hours = now.getHours().toString().padStart(2, '0'); const minutes = now.getMinutes().toString().padStart(2, '0');
+                entryDate = `${year}-${month}-${day}T${hours}:${minutes}`;
+                dateInput.value = entryDate;
             }
-            const start = new Date(startTimeISO); const end = new Date(endTimeISO);
-            if (end <= start) {
-                showNotification("End time must be after start time.", "error"); return;
-            }
-            const durationMillis = end - start;
-            const durationHours = durationMillis / (1000 * 60 * 60);
 
-            const newEntry = {
-                // --- ADDED userId ---
-                userId: currentUser.uid, // Include the authenticated user's ID
-                employeeName,
-                projectName,
-                startTimeISO,
-                endTimeISO,
-                durationHours: parseFloat(durationHours.toFixed(4)),
-                createdAt: new Date().toISOString()
+            const newEntryData = {
+                 date: new Date(entryDate).toISOString(),
+                 category, amount, notes
+                 // No need to add userId here, it's part of the path
             };
 
+            const entriesRef = fbDb.ref(`users/${currentUser.uid}/entries`);
+            const newEntryRef = entriesRef.push(); // Generate unique key
+
             try {
-                await db.ref('timeEntries').push(newEntry);
-                employeeInput.value = ''; projectInput.value = ''; startTimeInput.value = ''; endTimeInput.value = '';
-                document.getElementById('durationDisplay').value = '';
-                showNotification("Time entry saved successfully!", "success");
-                await loadAndDrawDashboard(); // Refresh dashboard
+                await newEntryRef.set(newEntryData);
+                categoryInput.value = ''; amountInput.value = ''; notesInput.value = ''; dateInput.value = '';
+                showNotification("Entry added successfully!", "success");
+                await loadAndDisplayData(); // Reload data and update dashboard
+                switchTab('dashboard');
             } catch (error) {
-                console.error("Error saving time entry to Firebase:", error);
-                // Check for permission denied error
-                if (error.code === 'PERMISSION_DENIED') {
-                     showNotification("Permission denied. You may not have access to save this entry.", "error");
-                } else {
-                     showNotification("Failed to save entry. Check console.", "error");
+                console.error("Error adding entry to Firebase:", error);
+                showNotification("Error adding entry.", "error");
+            }
+        }
+
+        async function deleteEntry(entryId) { // entryId is the Firebase key
+            if (!currentUser || !entryId) return;
+            if (confirm('Are you sure you want to delete this entry?')) {
+                const entryRef = fbDb.ref(`users/${currentUser.uid}/entries/${entryId}`);
+                try {
+                    await entryRef.remove();
+                    showNotification("Entry deleted.", "success");
+                    await loadAndDisplayData(); // Reload data and update dashboard
+                } catch (error) {
+                    console.error("Error deleting entry from Firebase:", error);
+                    showNotification("Error deleting entry.", "error");
                 }
             }
         }
 
-        // --- Data Loading, Filtering & Dashboard Update ---
-        async function loadAndDrawDashboard() {
-            // Ensure user is logged in before loading data
-            if (!currentUser) {
-                console.log("User not logged in. Skipping data load.");
-                clearDashboard(); // Ensure dashboard is clear if user logs out
-                return;
-            }
-            if (!db || isLoading) return;
-            isLoading = true;
-            showLoadingIndicator(true);
+        async function handleUpdateEntry(event) {
+            event.preventDefault();
+            if (!currentUser) return;
 
-            const employeeFilterValue = document.getElementById('employeeFilter').value;
-            const projectFilterValue = document.getElementById('projectFilter').value;
+            const entryId = document.getElementById('editEntryId').value; // Firebase key
+            const date = document.getElementById('editEntryDate').value;
+            const category = document.getElementById('editCategory').value.trim();
+            const amount = parseFloat(document.getElementById('editAmount').value);
+            const notes = document.getElementById('editNotes').value.trim();
+
+            if (!entryId || !category || isNaN(amount) || amount <= 0 || !date) {
+                showNotification("Please fill in all required fields with valid data.", "error"); return;
+            }
+
+            const updatedData = {
+                 date: new Date(date).toISOString(), category, amount, notes
+            };
+            const entryRef = fbDb.ref(`users/${currentUser.uid}/entries/${entryId}`);
 
             try {
-                // Fetch data from Firebase
-                // ** IMPORTANT SECURITY NOTE **
-                // This fetches ALL data and filters client-side.
-                // According to the rules ('firebase_rules_time_tracker'), only 'manager' or 'admin'
-                // roles can read the entire 'timeEntries' list.
-                // An 'employee' role WILL get a PERMISSION_DENIED error here.
-                // For 'employee' role, you MUST query specifically for their data:
-                // const snapshot = await db.ref('timeEntries').orderByChild('userId').equalTo(currentUser.uid).once('value');
-                // This requires implementing role checking (e.g., via custom claims).
-                // For now, this code assumes the logged-in user has manager/admin read access to the list.
-                const snapshot = await db.ref('timeEntries').once('value');
-                const allEntriesObject = snapshot.val();
-                let allEntries = [];
-                if (allEntriesObject) {
-                    allEntries = Object.keys(allEntriesObject).map(key => ({ id: key, ...allEntriesObject[key] }));
-                }
-
-                // Populate filters based on *all fetched* data (even if user is employee)
-                // This might reveal names/projects employees shouldn't see if rules were stricter on list read
-                await populateFilters(allEntries);
-
-                // Apply client-side filtering
-                let filteredEntries = allEntries;
-                if (employeeFilterValue) {
-                    filteredEntries = filteredEntries.filter(entry => entry.employeeName === employeeFilterValue);
-                }
-                if (projectFilterValue) {
-                    filteredEntries = filteredEntries.filter(entry => entry.projectName === projectFilterValue);
-                }
-                // ** Employee Data Filtering (if rules were strictly enforced client-side) **
-                // If implementing role check:
-                // if (userRole === 'employee') {
-                //    filteredEntries = filteredEntries.filter(entry => entry.userId === currentUser.uid);
-                // }
-
-
-                // Calculate Summary Stats from filtered data
-                const totalHours = d3.sum(filteredEntries, d => d.durationHours);
-                const totalEntriesCount = filteredEntries.length;
-                document.getElementById('totalHours').textContent = totalHours.toFixed(2);
-                document.getElementById('totalEntriesCount').textContent = totalEntriesCount;
-
-                // Aggregate data for chart using filtered data
-                const hoursByProject = d3.rollup(filteredEntries, v => d3.sum(v, d => d.durationHours), d => d.projectName);
-                const chartData = Array.from(hoursByProject, ([projectName, totalHours]) => ({ projectName, totalHours }))
-                                     .sort((a, b) => d3.descending(a.totalHours, b.totalHours));
-                drawBarChart(chartData);
-
-                // Update datalists based on all fetched data
-                await populateDataLists(allEntries);
-
+                await entryRef.update(updatedData);
+                closeModal();
+                showNotification("Entry updated successfully!", "success");
+                await loadAndDisplayData(); // Reload data and update dashboard
             } catch (error) {
-                console.error("Error loading/processing dashboard data:", error);
-                 if (error.code === 'PERMISSION_DENIED') {
-                     showNotification("Permission Denied: You don't have access to read this data.", "error");
-                     // Clear dashboard as data fetch failed
-                     clearDashboard();
-                 } else {
-                    showNotification("Could not load dashboard data. Check console.", "error");
-                    clearDashboard();
+                console.error("Error updating entry in Firebase:", error);
+                showNotification("Error updating entry.", "error");
+            }
+        }
+
+        // --- Modal Management ---
+        async function openEditModal(entryId) { // entryId is the Firebase key
+             if (!currentUser || !entryId) return;
+             const entryRef = fbDb.ref(`users/${currentUser.uid}/entries/${entryId}`);
+             try {
+                 const snapshot = await entryRef.once('value');
+                 const entry = snapshot.val();
+                 if (!entry) { showNotification("Entry not found.", "error"); return; }
+
+                 document.getElementById('editEntryId').value = entryId; // Store the key
+                 document.getElementById('editEntryDate').value = entry.date.substring(0, 16);
+                 document.getElementById('editCategory').value = entry.category;
+                 document.getElementById('editAmount').value = entry.amount;
+                 document.getElementById('editNotes').value = entry.notes;
+                 document.getElementById('editModal').style.display = 'block';
+                 document.getElementById('editEntryDate').focus();
+             } catch (error) {
+                 console.error("Error fetching entry for edit from Firebase:", error);
+                 showNotification("Could not load entry data for editing.", "error");
+             }
+         }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        // --- Data Handling & UI Updates (Firebase) ---
+        async function loadAndDisplayData() {
+             if (!currentUser) { allEntries = []; applyFiltersAndDraw(); return; } // Clear if no user
+
+             loadingIndicator.style.display = 'block';
+             const entriesRef = fbDb.ref(`users/${currentUser.uid}/entries`);
+             try {
+                 const snapshot = await entriesRef.once('value');
+                 const entriesData = snapshot.val();
+                 // Convert Firebase object to array, adding the key as 'id'
+                 allEntries = entriesData ? Object.keys(entriesData).map(key => ({
+                     id: key, // Store the Firebase key
+                     ...entriesData[key]
+                 })) : [];
+                console.log("Loaded entries: ", allEntries.length);
+                await populateCategoryFilters(); // Update filters based on new data
+                applyFiltersAndDraw(); // Filter and draw with the fresh data
+             } catch (error) {
+                console.error("Error loading entries from Firebase:", error);
+                showNotification("Error loading transaction data.", "error");
+                allEntries = []; // Clear cache on error
+                applyFiltersAndDraw(); // Attempt to draw empty state
+             } finally {
+                 loadingIndicator.style.display = 'none';
+             }
+         }
+
+        // Apply filters to the locally cached `allEntries` array and redraw
+        function applyFiltersAndDraw() {
+             const startDateInput = document.getElementById("startDate");
+             const endDateInput = document.getElementById("endDate");
+             const categoryFilterValue = document.getElementById("categoryFilter").value;
+
+             const startDate = startDateInput.value ? new Date(startDateInput.value + "T00:00:00").toISOString() : null;
+             const endDate = endDateInput.value ? new Date(endDateInput.value + "T23:59:59").toISOString() : null;
+
+             const filteredData = allEntries.filter(entry => {
+                 let include = true;
+                 if (startDate && entry.date < startDate) include = false;
+                 if (endDate && entry.date > endDate) include = false;
+                 if (categoryFilterValue && entry.category !== categoryFilterValue) include = false;
+                 return include;
+             }).sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort after filtering
+
+             console.log("Filtered entries: ", filteredData.length);
+
+             updateSummaryStats(filteredData);
+             drawBarChart(filteredData);
+             drawPieChart(filteredData);
+             updateDataTable(filteredData);
+         }
+
+        async function populateCategoryFilters() {
+            // Populate based on the `allEntries` array
+            const categories = [...new Set(allEntries.map(entry => entry.category))].sort();
+
+            const categoryFilter = document.getElementById('categoryFilter');
+            const categoriesDatalist = document.getElementById('categories');
+            const currentFilterValue = categoryFilter.value; // Preserve selection if possible
+
+            // Clear existing options (keep "All Categories")
+            while (categoryFilter.options.length > 1) categoryFilter.remove(1);
+            categoriesDatalist.innerHTML = '';
+
+            categories.forEach(category => {
+                 if (category) { // Ensure category is not empty/null
+                     const filterOption = document.createElement('option');
+                     filterOption.value = category; filterOption.textContent = category;
+                     categoryFilter.appendChild(filterOption);
+
+                     const datalistOption = document.createElement('option');
+                     datalistOption.value = category;
+                     categoriesDatalist.appendChild(datalistOption);
                  }
-            } finally {
-                isLoading = false;
-                showLoadingIndicator(false);
-            }
-        }
+             });
 
-         // Function to clear dashboard elements
-        function clearDashboard() {
-            document.getElementById('totalHours').textContent = '0.00';
-            document.getElementById('totalEntriesCount').textContent = '0';
-            drawBarChart([]); // Draw empty chart
-            // Optionally clear filters and datalists
-            populateSelect('employeeFilter', [], 'All Employees');
-            populateSelect('projectFilter', [], 'All Projects');
-            populateDatalist('employeeDataList', []);
-            populateDatalist('projectDataList', []);
+             // Restore previous selection if the category still exists
+             categoryFilter.value = Array.from(categoryFilter.options).some(opt => opt.value === currentFilterValue) ? currentFilterValue : "";
         }
 
 
-        // --- UI Population ---
-        async function populateFilters(data) {
-            const employees = [...new Set(data.map(item => item.employeeName).filter(Boolean))].sort();
-            populateSelect('employeeFilter', employees, 'All Employees');
-            const projects = [...new Set(data.map(item => item.projectName).filter(Boolean))].sort();
-            populateSelect('projectFilter', projects, 'All Projects');
-        }
-
-        async function populateDataLists(data) {
-            const employees = [...new Set(data.map(item => item.employeeName).filter(Boolean))].sort();
-            populateDatalist('employeeDataList', employees);
-            const projects = [...new Set(data.map(item => item.projectName).filter(Boolean))].sort();
-            populateDatalist('projectDataList', projects);
-        }
-
-        function populateSelect(selectId, optionsArray, defaultOptionText) {
-            const selectElement = document.getElementById(selectId);
-            if(!selectElement) return; // Guard against null element
-            const currentValue = selectElement.value;
-            selectElement.innerHTML = `<option value="">${defaultOptionText}</option>`;
-            optionsArray.forEach(optionValue => {
-                const option = document.createElement('option');
-                option.value = optionValue; option.textContent = optionValue;
-                selectElement.appendChild(option);
-            });
-            selectElement.value = Array.from(selectElement.options).some(opt => opt.value === currentValue) ? currentValue : "";
-        }
-
-        function populateDatalist(datalistId, optionsArray) {
-            const datalist = document.getElementById(datalistId);
-             if(!datalist) return; // Guard against null element
-            datalist.innerHTML = '';
-            optionsArray.forEach(optionValue => {
-                const option = document.createElement('option');
-                option.value = optionValue;
-                datalist.appendChild(option);
-            });
-        }
-
-        // --- D3 Chart Drawing ---
-        function drawBarChart(data) {
-            const svg = d3.select("#hoursChart");
-            svg.selectAll("*").remove();
-            if (!data || data.length === 0) {
-                svg.append("text").attr("x", "50%").attr("y", "50%").attr("text-anchor", "middle")
-                   .style("font-size", "1rem").style("fill", "#a0aec0").text("No time entries match the current filters.");
-                return;
-            }
-            const bounds = svg.node().getBoundingClientRect();
-            const margin = { top: 30, right: 30, bottom: 80, left: 70 };
-            const width = bounds.width - margin.left - margin.right;
-            const height = bounds.height - margin.top - margin.bottom;
-            if (width <= 0 || height <= 0) { console.warn("Chart dimensions too small."); svg.append("text").attr("x", 10).attr("y", 20).text("Chart area too small."); return; }
-            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-            const x = d3.scaleBand().domain(data.map(d => d.projectName)).range([0, width]).padding(0.3);
-            const y = d3.scaleLinear().domain([0, d3.max(data, d => d.totalHours) || 1]).nice().range([height, 0]);
-            g.append("g").attr("class", "x-axis").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x))
-                .selectAll("text").attr("transform", "rotate(-45)").style("text-anchor", "end").attr("dx", "-0.8em").attr("dy", "0.15em");
-            g.append("g").attr("class", "y-axis").call(d3.axisLeft(y).ticks(Math.max(3, Math.floor(height / 40))).tickFormat(d => d.toFixed(1) + "h"));
-            g.append("text").attr("transform", "rotate(-90)").attr("y", 0 - margin.left + 15).attr("x", 0 - (height / 2))
-                .attr("dy", "1em").style("text-anchor", "middle").style("font-size", "0.95rem").style("fill", "#4a5568").text("Total Hours");
-            g.selectAll(".bar").data(data).enter().append("rect").attr("class", "bar")
-                .attr("x", d => x(d.projectName)).attr("y", d => y(d.totalHours)).attr("width", x.bandwidth()).attr("height", d => Math.max(0, height - y(d.totalHours)))
-                .attr("fill", "#4299e1")
-                .on("mouseover", function (event, d) {
-                    d3.select(this).attr("fill", "#2b6cb0"); tooltip.transition().duration(200).style("opacity", 0.9);
-                    tooltip.html(`<strong>${escapeHtml(d.projectName)}</strong><br>Hours: ${d.totalHours.toFixed(2)}`)
-                        .style("left", `${event.pageX + 10}px`).style("top", `${event.pageY - 28}px`);
-                })
-                .on("mouseout", function () { d3.select(this).attr("fill", "#4299e1"); tooltip.transition().duration(500).style("opacity", 0); });
-        }
-
-        // --- Import / Export ---
-        async function exportCSV() {
-            if (!currentUser) { showNotification("Please log in to export data.", "error"); return; }
-            if (!db) { showNotification("Database not initialized.", "error"); return; }
-            showLoadingIndicator(true);
-            try {
-                // Fetch ALL data for export, regardless of current filters or role (assuming export needs everything)
-                // ** SECURITY NOTE: This might fetch data the user cannot normally see in the UI if they are an 'employee'.
-                // Consider if export should be role-restricted or only export data the user can access.
-                const snapshot = await db.ref('timeEntries').once('value');
-                const allEntriesObject = snapshot.val();
-                if (!allEntriesObject) { showNotification("No data to export.", "info"); return; }
-                const allEntries = Object.keys(allEntriesObject).map(key => ({ firebaseId: key, ...allEntriesObject[key] }));
-
-                const headers = ["firebaseId", "userId", "employeeName", "projectName", "startTimeISO", "endTimeISO", "durationHours", "createdAt"];
-                let csvContent = headers.join(",") + "\n";
-                allEntries.forEach(entry => {
-                    const row = headers.map(header => {
-                        let value = entry[header] === null || entry[header] === undefined ? '' : entry[header];
-                        if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
-                            value = `"${value.replace(/"/g, '""')}"`;
-                        }
-                        return value;
-                    });
-                    csvContent += row.join(",") + "\n";
-                });
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.setAttribute("href", url); link.setAttribute("download", `time_entries_export_${new Date().toISOString().slice(0,10)}.csv`);
-                link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
-                showNotification("CSV export started.", "success");
-            } catch (error) {
-                console.error("Error exporting CSV:", error);
-                 if (error.code === 'PERMISSION_DENIED') {
-                     showNotification("Permission Denied: You don't have access to export all data.", "error");
-                 } else {
-                    showNotification("Failed to export CSV. Check console.", "error");
+        async function clearAllData() {
+             if (!currentUser) return;
+             if (confirm('WARNING: This will permanently delete ALL your transaction entries from Firebase. Are you sure?')) {
+                 const entriesRef = fbDb.ref(`users/${currentUser.uid}/entries`);
+                 try {
+                     await entriesRef.remove();
+                     showNotification("All entries cleared.", "success");
+                     await loadAndDisplayData(); // Reload (should be empty) and redraw
+                 } catch (error) {
+                     console.error("Error clearing data from Firebase:", error);
+                     showNotification("Error clearing data.", "error");
                  }
-            } finally { showLoadingIndicator(false); }
+             }
+         }
+
+        // --- Chart Drawing & Data Update (Mostly Unchanged, ensure they use filteredData) ---
+        // Make sure these functions receive the filtered data array from applyFiltersAndDraw
+
+        function updateSummaryStats(filteredData) { /* Keep original logic */
+            const total = d3.sum(filteredData, d => d.amount); const average = filteredData.length > 0 ? total / filteredData.length : 0; const categories = new Set(filteredData.map(d => d.category)).size;
+            document.getElementById("totalAmount").textContent = `${currencySymbol}${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; document.getElementById("averageAmount").textContent = `${currencySymbol}${average.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; document.getElementById("categoryCount").textContent = categories; document.getElementById("entryCount").textContent = filteredData.length;
         }
 
-        // --- Utility Functions ---
-        function escapeHtml(unsafe) {
-            if (typeof unsafe !== 'string') return unsafe;
-            return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        function drawBarChart(filteredData) { /* Keep original D3 logic */
+             const svg = d3.select("#barChart"); svg.selectAll("*").remove(); if (filteredData.length === 0) { svg.append("text").attr("x", "50%").attr("y", "50%").attr("text-anchor", "middle").text("No data for selected period/category."); return; } const bounds = svg.node().getBoundingClientRect(); const margin = {top: 20, right: 20, bottom: 70, left: 60}; const width = Math.max(100, bounds.width - margin.left - margin.right); const height = Math.max(100, bounds.height - margin.top - margin.bottom); const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`); const grouped = Array.from(d3.group(filteredData, d => d.category), ([key, value]) => ({ category: key, amount: d3.sum(value, d => d.amount) })).sort((a, b) => d3.descending(a.amount, b.amount)); const x = d3.scaleBand().domain(grouped.map(d => d.category)).range([0, width]).padding(0.2); const y = d3.scaleLinear().domain([0, d3.max(grouped, d => d.amount) || 1]).nice().range([height, 0]); g.selectAll(".bar").data(grouped).enter().append("rect").attr("class", "bar").attr("x", d => x(d.category)).attr("y", d => y(d.amount)).attr("width", x.bandwidth()).attr("height", d => Math.max(0, height - y(d.amount))).attr("fill", "#3498db").on("mouseover", function(event, d) { d3.select(this).attr("fill", "#2980b9"); tooltip.transition().duration(200).style("opacity", .9); tooltip.html(`<strong>${escapeHtml(d.category)}</strong><br>${currencySymbol}${d.amount.toFixed(2)}`).style("left", `${event.pageX + 10}px`).style("top", `${event.pageY - 28}px`); }).on("mouseout", function() { d3.select(this).attr("fill", "#3498db"); tooltip.transition().duration(500).style("opacity", 0); }); g.append("g").attr("class", "x-axis").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x)).selectAll("text").style("text-anchor", "end").attr("dx", "-.8em").attr("dy", ".15em").attr("transform", "rotate(-45)"); g.append("g").attr("class", "y-axis").call(d3.axisLeft(y).ticks(Math.min(5, height / 40)).tickFormat(d => `${currencySymbol}${d3.format(",.0f")(d)}`)); g.append("text").attr("transform", "rotate(-90)").attr("y", 0 - margin.left + 10).attr("x", 0 - (height / 2)).attr("dy", "1em").style("text-anchor", "middle").style("font-size", "12px").style("fill", "#555").text("Total Amount");
         }
 
-        function showNotification(message, type = 'info') {
-            const notificationArea = document.getElementById('notification-area');
-            if (!notificationArea) return;
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`; notification.textContent = message;
-            notificationArea.prepend(notification);
-            setTimeout(() => {
-                notification.classList.add('fade-out');
-                notification.addEventListener('transitionend', () => notification.remove());
-            }, 3500);
+        function drawPieChart(filteredData) { /* Keep original D3 logic */
+             const svg = d3.select("#pieChart"); svg.selectAll("*").remove(); if (filteredData.length === 0) { svg.append("text").attr("x", "50%").attr("y", "50%").attr("text-anchor", "middle").text("No data for selected period/category."); return; } const bounds = svg.node().getBoundingClientRect(); const width = bounds.width; const height = bounds.height; const margin = {top: 20, right: 20, bottom: 20, left: 20}; const legendWidth = 100; const legendItemHeight = 20; const chartAreaWidth = width - legendWidth - margin.left - margin.right; const chartAreaHeight = height - margin.top - margin.bottom; const radius = Math.min(chartAreaWidth, chartAreaHeight) / 2 * 0.8; const g = svg.append("g").attr("transform", `translate(${margin.left + chartAreaWidth / 2}, ${margin.top + chartAreaHeight / 2})`); const grouped = Array.from(d3.group(filteredData, d => d.category), ([key, value]) => ({ category: key, amount: d3.sum(value, d => d.amount) })).filter(d => d.amount > 0); if (grouped.length === 0) { svg.append("text").attr("x", "50%").attr("y", "50%").attr("text-anchor", "middle").text("No spending data."); return; } const totalAmount = d3.sum(grouped, d => d.amount); const color = d3.scaleOrdinal().domain(grouped.map(d => d.category)).range(d3.schemeTableau10); const pie = d3.pie().value(d => d.amount).sort(null); const arc = d3.arc().innerRadius(radius * 0.4).outerRadius(radius); const arcs = g.selectAll(".arc").data(pie(grouped)).enter().append("g").attr("class", "arc"); arcs.append("path").attr("d", arc).attr("fill", d => color(d.data.category)).attr("stroke", "white").style("stroke-width", "2px").on("mouseover", function(event, d) { d3.select(this).attr("opacity", 0.7); tooltip.transition().duration(200).style("opacity", .9); const percent = (d.data.amount / totalAmount) * 100; tooltip.html(`<strong>${escapeHtml(d.data.category)}</strong><br>${currencySymbol}${d.data.amount.toFixed(2)}<br>${percent.toFixed(1)}%`).style("left", `${event.pageX + 10}px`).style("top", `${event.pageY - 28}px`); }).on("mouseout", function() { d3.select(this).attr("opacity", 1); tooltip.transition().duration(500).style("opacity", 0); }); arcs.append("text").attr("transform", d => `translate(${arc.centroid(d)})`).attr("text-anchor", "middle").style("fill", "white").style("font-size", "11px").text(d => { const percent = (d.data.amount / totalAmount) * 100; return percent > 5 ? `${Math.round(percent)}%` : ''; }); const maxLegendItems = Math.floor((chartAreaHeight) / legendItemHeight); const legendData = color.domain().slice(0, maxLegendItems); const legend = svg.append("g").attr("class", "legend").attr("transform", `translate(${width - legendWidth - margin.right}, ${margin.top})`); const legendItems = legend.selectAll(".legend-item").data(legendData).enter().append("g").attr("class", "legend-item").attr("transform", (d, i) => `translate(0, ${i * legendItemHeight})`); legendItems.append("rect").attr("width", 15).attr("height", 15).attr("fill", color); legendItems.append("text").attr("x", 20).attr("y", 12).text(d => escapeHtml(d)).style("font-size", "12px").style("fill", "#333"); if (color.domain().length > maxLegendItems) { legend.append("text").attr("x", 0).attr("y", maxLegendItems * legendItemHeight + 10).text("...").style("font-size", "12px").style("fill", "#555"); }
         }
 
-        function showLoadingIndicator(show) {
-             if (!loadingOverlay) return;
-             loadingOverlay.classList.toggle('visible', show);
+        function updateDataTable(filteredData) { // Ensure buttons use entry.id (Firebase key)
+             const tableBody = document.getElementById("entryTable");
+             tableBody.innerHTML = "";
+             if (filteredData.length === 0) { /* Show empty message */ const row = tableBody.insertRow(); const cell = row.insertCell(); cell.colSpan = 5; cell.textContent = "No transactions found for the selected criteria."; cell.style.textAlign = "center"; cell.style.padding = "20px"; cell.style.color = "#777"; return; }
+             filteredData.forEach(entry => {
+                 const row = tableBody.insertRow();
+                 const dateObj = new Date(entry.date);
+                 const formattedDate = dateObj.toLocaleDateString();
+                 const formattedTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' });
+                 row.innerHTML = `
+                     <td>${formattedDate} ${formattedTime}</td>
+                     <td>${escapeHtml(entry.category)}</td>
+                     <td>${currencySymbol}${entry.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                     <td>${escapeHtml(entry.notes || '')}</td>
+                     <td class="actions-cell">
+                         <button onclick="openEditModal('${entry.id}')" class="btn-warning" title="Edit Entry"><i class="fas fa-edit"></i></button>
+                         <button onclick="deleteEntry('${entry.id}')" class="btn-danger" title="Delete Entry"><i class="fas fa-trash"></i></button>
+                     </td>
+                 `; // Pass entry.id (Firebase key) as string
+             });
+         }
+
+        // --- Utility Functions (Mostly Unchanged) ---
+        function switchTab(tabName) { /* Keep original logic */
+             document.querySelectorAll('.tab-content').forEach(tab => { tab.classList.remove('active'); tab.setAttribute('aria-hidden', 'true'); }); document.querySelectorAll('.tab').forEach(tab => { tab.classList.remove('active'); tab.setAttribute('aria-selected', 'false'); tab.setAttribute('tabindex', '-1'); }); const activeContent = document.getElementById(`${tabName}-tab`); const activeTab = document.querySelector(`.tab[onclick="switchTab('${tabName}')"]`); if (activeContent) { activeContent.classList.add('active'); activeContent.setAttribute('aria-hidden', 'false'); } if (activeTab) { activeTab.classList.add('active'); activeTab.setAttribute('aria-selected', 'true'); activeTab.setAttribute('tabindex', '0'); activeTab.focus(); }
+        }
+        function escapeHtml(unsafe) { /* Keep original logic */
+             if (typeof unsafe !== 'string') return unsafe; return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+        function showNotification(message, type = 'info') { /* Keep original logic */
+             let notificationArea = document.getElementById('notification-area'); if (!notificationArea) { notificationArea = document.createElement('div'); notificationArea.id = 'notification-area'; document.body.appendChild(notificationArea); } const notification = document.createElement('div'); notification.className = `notification ${type}`; notification.textContent = message; notificationArea.appendChild(notification); setTimeout(() => { notification.classList.add('fade-out'); notification.addEventListener('transitionend', () => { notification.remove(); if (!notificationArea.hasChildNodes()) notificationArea.remove(); }); }, 3000);
         }
 
         // --- App Initialization ---
-        document.addEventListener('DOMContentLoaded', initApp);
+        // Authentication listener handles the main app flow initiation
+        console.log("Firebase Dashboard Initialized. Waiting for auth state...");
 
     </script>
-
 </body>
 </html>
