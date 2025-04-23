@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Time Tracking Dashboard (Firebase + Auth)</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 15px;
+            max-width: 1300px;
+            margin: auto;
+            background-color: #f8f9fa;
+            color: #343a40;
+            line-height: 1.6;
+        }
+        h1, h2, h3 {
+            color: #2c5282;
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            font-size: 2.2rem;
+        }
+        h2 {
+            font-size: 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        /* Auth Section */
+        .auth-section {
+            text-align: right;
+            margin-bottom: 1rem;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 15px;
+        }
+        #userStatus {
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+        #loginBtn, #logoutBtn {
+             padding: 8px 15px; /* Smaller buttons */
+             font-size: 0.9rem;
+        }
+        #logoutBtn {
+            background-color: #e53e3e; /* Red */
+        }
+         #logoutBtn:hover {
+            background-color: #c53030;
+        }
+
+        /* Layout & Cards */
+        .container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+        }
+        @media (min-width: 992px) {
+            .container {
+                grid-template-columns: 400px 1fr;
+            }
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            padding: 25px;
+            overflow: hidden;
+        }
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 1.1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        input[type="text"],
+        input[type="datetime-local"],
+        select,
+        input:read-only:disabled { /* Style disabled inputs */
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            background-color: #fff;
+        }
+         input:read-only:disabled {
+             background-color: #edf2f7; /* Lighter gray for disabled */
+             cursor: not-allowed;
+             opacity: 0.7;
+         }
+        input:focus, select:focus {
+            border-color: #4299e1;
+            outline: 0;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
+        }
+        fieldset#timeEntryFieldset:disabled { /* Style disabled fieldset */
+             opacity: 0.6;
+             pointer-events: none; /* Prevent interactions */
+         }
+
+        /* Button Styles */
+        button {
+            background-color: #3182ce;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease-in-out, box-shadow 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+        button:hover:not(:disabled) { /* Add :not(:disabled) */
+            background-color: #2b6cb0;
+            box-shadow: 0 3px 7px rgba(0, 0, 0, 0.1);
+        }
+        button:disabled {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        button i {
+            font-size: 0.9em;
+        }
+        .btn-success { background-color: #38a169; }
+        .btn-success:hover:not(:disabled) { background-color: #2f855a; }
+        .btn-secondary { background-color: #718096; }
+        .btn-secondary:hover:not(:disabled) { background-color: #4a5568; }
+
+        /* Dashboard Area */
+        .dashboard-area {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        /* Summary Statistics */
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+        }
+        .stat-card {
+            background: #ebf8ff;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #bee3f8;
+        }
+        .stat-card h3 {
+            margin-top: 0;
+            color: #2b6cb0;
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-card p {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2c5282;
+            margin-bottom: 0;
+        }
+        /* Filters */
+        .filter-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: flex-end;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        }
+        .filter-section .form-group {
+            flex: 1 1 220px;
+            margin-bottom: 0;
+        }
+        .filter-section button {
+            flex-shrink: 0;
+        }
+        /* Chart Area */
+        .chart-container {
+            position: relative; /* Needed for loading overlay */
+        }
+        .chart-title {
+            text-align: center;
+            font-weight: 600;
+            color: #2c5282;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        svg#hoursChart {
+            width: 100%;
+            min-height: 380px;
+            display: block;
+            background-color: #fff;
+            border-radius: 6px;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            border-radius: 4px;
+            padding: 9px 13px;
+            pointer-events: none;
+            font-size: 0.9rem;
+            z-index: 10;
+            white-space: nowrap;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        /* Notification Area */
+        #notification-area {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            width: auto;
+            max-width: 90%;
+        }
+        .notification {
+            padding: 12px 25px;
+            margin: 5px 0;
+            border-radius: 6px;
+            color: white;
+            opacity: 1;
+            transition: opacity 0.5s ease-out, transform 0.3s ease-out;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            transform: translateY(0);
+            text-align: center;
+            font-weight: 500;
+        }
+        .notification.success { background-color: #38a169; }
+        .notification.error { background-color: #e53e3e; }
+        .notification.info { background-color: #3182ce; }
+        .notification.fade-out {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        /* Loading State */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.75); /* Slightly more opaque */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 5;
+            border-radius: 8px;
+            transition: opacity 0.3s ease-in-out; /* Add transition */
+            opacity: 0; /* Hidden by default */
+            pointer-events: none; /* Allow clicks through when hidden */
+        }
+         .loading-overlay.visible {
+             opacity: 1;
+             pointer-events: auto;
+         }
+        .loading-overlay i {
+            font-size: 2.5rem; /* Larger spinner */
+            color: #3182ce;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="auth-section">
+        <span id="userStatus">Please log in.</span>
+        <button id="loginBtn" onclick="signInWithGoogle()"><i class="fab fa-google"></i> Sign In with Google</button>
+        <button id="logoutBtn" onclick="signOut()" style="display: none;"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
+    </div>
+
+    <h1>Emploii Time Tracking Dashboard</h1>
+
+    <div class="container">
+        <div class="card">
+            <h2><i class="fas fa-clock"></i> Log New Time Entry</h2>
+            <fieldset id="timeEntryFieldset" disabled>
+                <form id="addTimeEntryForm">
+                    <div class="form-group">
+                        <label for="employeeName">Employee Name</label>
+                        <input type="text" id="employeeName" list="employeeDataList" placeholder="e.g., Jane Doe" required>
+                        <datalist id="employeeDataList"></datalist>
+                    </div>
+                    <div class="form-group">
+                        <label for="projectName">Project / Task</label>
+                        <input type="text" id="projectName" list="projectDataList" placeholder="e.g., Website Redesign" required>
+                        <datalist id="projectDataList"></datalist>
+                    </div>
+                    <div class="form-group">
+                        <label for="startTime">Start Time</label>
+                        <input type="datetime-local" id="startTime" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="endTime">End Time</label>
+                        <input type="datetime-local" id="endTime" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="durationDisplay">Duration (Hours)</label>
+                        <input type="text" id="durationDisplay" readonly disabled>
+                    </div>
+                    <button type="submit" class="btn-success" style="width: 100%;">
+                        <i class="fas fa-save"></i> Save Time Entry
+                    </button>
+                </form>
+            </fieldset>
+        </div>
+
+        <div class="dashboard-area">
+            <div class="summary-stats">
+                <div class="stat-card">
+                    <h3>Total Hours Tracked</h3>
+                    <p id="totalHours">0.00</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Entries</h3>
+                    <p id="totalEntriesCount">0</p>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <div class="form-group">
+                    <label for="employeeFilter">Filter by Employee</label>
+                    <select id="employeeFilter">
+                        <option value="">All Employees</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="projectFilter">Filter by Project</label>
+                    <select id="projectFilter">
+                        <option value="">All Projects</option>
+                    </select>
+                </div>
+                <button type="button" id="applyFilterBtn" onclick="loadAndDrawDashboard()" title="Apply filters" disabled>
+                    <i class="fas fa-filter"></i> Apply Filters
+                </button>
+                <button id="exportBtn" onclick="exportCSV()" class="btn-secondary" title="Export all time data as CSV file" disabled>
+                    <i class="fas fa-file-csv"></i> Export CSV
+                </button>
+            </div>
+
+            <div class="card chart-container" id="chartCard">
+                <div class="chart-title">Total Hours by Project</div>
+                <svg id="hoursChart"></svg>
+                <div class="loading-overlay"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification-area"></div>
+
+    <div class="tooltip" style="opacity: 0;"></div>
+
+    <script>
+        // --- Firebase Configuration ---
+        // IMPORTANT: Replace with your actual Firebase project configuration
+        const firebaseConfig = {
+    apiKey: "AIzaSyBR5uHjAAqVWgaK0RgLrp7U-uszq0Fd_c0",
+    authDomain: "timetracker-33160.firebaseapp.com",
+    databaseURL: "https://timetracker-33160-default-rtdb.firebaseio.com",
+    projectId: "timetracker-33160",
+    storageBucket: "timetracker-33160.firebasestorage.app",
+    messagingSenderId: "1032295002006",
+    appId: "1:1032295002006:web:3e8e65afe11449d129b7b7",
+    measurementId: "G-LC81C3CF06"
+        };
+
+        // --- Initialize Firebase ---
+        let db; // Realtime Database reference
+        let auth; // Auth service reference
+        let googleProvider; // Google Auth Provider
+
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            db = firebase.database();
+            auth = firebase.auth();
+            googleProvider = new firebase.auth.GoogleAuthProvider(); // Initialize Google provider
+            console.log("Firebase Initialized Successfully.");
+        } catch (error) {
+            console.error("Firebase initialization error:", error);
+            showNotification("CRITICAL: Firebase initialization failed. Check console and config.", "error");
+            // Keep UI disabled if Firebase fails
+        }
+
+        // --- Global Variables ---
+        const tooltip = d3.select(".tooltip");
+        let isLoading = false;
+        let currentUser = null; // Store current user info
+
+        // --- DOM Elements ---
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userStatus = document.getElementById('userStatus');
+        const timeEntryFieldset = document.getElementById('timeEntryFieldset');
+        const applyFilterBtn = document.getElementById('applyFilterBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const loadingOverlay = document.querySelector('.loading-overlay');
+
+
+        // --- Authentication Logic ---
+        function signInWithGoogle() {
+            if (!auth) return;
+            auth.signInWithPopup(googleProvider)
+                .then((result) => {
+                    // This gives you a Google Access Token. You can use it to access the Google API.
+                    // const credential = result.credential;
+                    // const token = credential.accessToken;
+                    // The signed-in user info.
+                    // const user = result.user;
+                    showNotification(`Welcome, ${result.user.displayName}!`, 'info');
+                }).catch((error) => {
+                    console.error("Google Sign-In Error:", error);
+                    showNotification(`Sign-in failed: ${error.message}`, 'error');
+                });
+        }
+
+        function signOut() {
+            if (!auth) return;
+            auth.signOut().then(() => {
+                // Sign-out successful. Handled by onAuthStateChanged
+                showNotification("You have been signed out.", 'info');
+            }).catch((error) => {
+                console.error("Sign Out Error:", error);
+                showNotification(`Sign-out failed: ${error.message}`, 'error');
+            });
+        }
+
+        // Listener for authentication state changes
+        function setupAuthListener() {
+            if (!auth) return;
+            auth.onAuthStateChanged((user) => {
+                currentUser = user; // Update global user state
+                if (user) {
+                    // User is signed in
+                    userStatus.textContent = `Logged in as: ${user.displayName || user.email}`;
+                    loginBtn.style.display = 'none';
+                    logoutBtn.style.display = 'inline-flex';
+                    timeEntryFieldset.disabled = false; // Enable form
+                    applyFilterBtn.disabled = false;
+                    exportBtn.disabled = false;
+                    loadAndDrawDashboard(); // Load data now that user is logged in
+                } else {
+                    // User is signed out
+                    userStatus.textContent = 'Please log in.';
+                    loginBtn.style.display = 'inline-flex';
+                    logoutBtn.style.display = 'none';
+                    timeEntryFieldset.disabled = true; // Disable form
+                    applyFilterBtn.disabled = true;
+                    exportBtn.disabled = true;
+                    // Clear dashboard when logged out
+                    clearDashboard();
+                }
+            });
+        }
+
+        // --- Initialization ---
+        async function initApp() {
+            if (!db || !auth) return; // Don't proceed if Firebase failed
+            setupAuthListener(); // Set up auth listener first
+            setupEventListeners();
+            // Initial data load will happen via onAuthStateChanged when user logs in
+        }
+
+        // --- Event Listeners ---
+        function setupEventListeners() {
+            document.getElementById('addTimeEntryForm').addEventListener('submit', handleAddTimeEntry);
+            document.getElementById('startTime').addEventListener('change', calculateDuration);
+            document.getElementById('endTime').addEventListener('change', calculateDuration);
+        }
+
+        // --- Time Entry & Duration Calculation ---
+        function calculateDuration() {
+            const startTimeInput = document.getElementById('startTime').value;
+            const endTimeInput = document.getElementById('endTime').value;
+            const durationDisplay = document.getElementById('durationDisplay');
+            if (startTimeInput && endTimeInput) {
+                const start = new Date(startTimeInput);
+                const end = new Date(endTimeInput);
+                if (end > start) {
+                    const diffMillis = end - start;
+                    const diffHours = diffMillis / (1000 * 60 * 60);
+                    durationDisplay.value = diffHours.toFixed(2);
+                } else {
+                    durationDisplay.value = "End after start";
+                }
+            } else {
+                durationDisplay.value = "";
+            }
+        }
+
+        async function handleAddTimeEntry(event) {
+            event.preventDefault();
+            // Ensure user is logged in before allowing entry
+            if (!currentUser) {
+                 showNotification("You must be logged in to save entries.", "error");
+                 return;
+            }
+            if (!db) { showNotification("Database not initialized.", "error"); return; }
+
+            const employeeInput = document.getElementById('employeeName');
+            const projectInput = document.getElementById('projectName');
+            const startTimeInput = document.getElementById('startTime');
+            const endTimeInput = document.getElementById('endTime');
+
+            const employeeName = employeeInput.value.trim();
+            const projectName = projectInput.value.trim();
+            const startTimeISO = startTimeInput.value ? new Date(startTimeInput.value).toISOString() : null;
+            const endTimeISO = endTimeInput.value ? new Date(endTimeInput.value).toISOString() : null;
+
+            if (!employeeName || !projectName || !startTimeISO || !endTimeISO) {
+                showNotification("Please fill in all fields.", "error"); return;
+            }
+            const start = new Date(startTimeISO); const end = new Date(endTimeISO);
+            if (end <= start) {
+                showNotification("End time must be after start time.", "error"); return;
+            }
+            const durationMillis = end - start;
+            const durationHours = durationMillis / (1000 * 60 * 60);
+
+            const newEntry = {
+                // --- ADDED userId ---
+                userId: currentUser.uid, // Include the authenticated user's ID
+                employeeName,
+                projectName,
+                startTimeISO,
+                endTimeISO,
+                durationHours: parseFloat(durationHours.toFixed(4)),
+                createdAt: new Date().toISOString()
+            };
+
+            try {
+                await db.ref('timeEntries').push(newEntry);
+                employeeInput.value = ''; projectInput.value = ''; startTimeInput.value = ''; endTimeInput.value = '';
+                document.getElementById('durationDisplay').value = '';
+                showNotification("Time entry saved successfully!", "success");
+                await loadAndDrawDashboard(); // Refresh dashboard
+            } catch (error) {
+                console.error("Error saving time entry to Firebase:", error);
+                // Check for permission denied error
+                if (error.code === 'PERMISSION_DENIED') {
+                     showNotification("Permission denied. You may not have access to save this entry.", "error");
+                } else {
+                     showNotification("Failed to save entry. Check console.", "error");
+                }
+            }
+        }
+
+        // --- Data Loading, Filtering & Dashboard Update ---
+        async function loadAndDrawDashboard() {
+            // Ensure user is logged in before loading data
+            if (!currentUser) {
+                console.log("User not logged in. Skipping data load.");
+                clearDashboard(); // Ensure dashboard is clear if user logs out
+                return;
+            }
+            if (!db || isLoading) return;
+            isLoading = true;
+            showLoadingIndicator(true);
+
+            const employeeFilterValue = document.getElementById('employeeFilter').value;
+            const projectFilterValue = document.getElementById('projectFilter').value;
+
+            try {
+                // Fetch data from Firebase
+                // ** IMPORTANT SECURITY NOTE **
+                // This fetches ALL data and filters client-side.
+                // According to the rules ('firebase_rules_time_tracker'), only 'manager' or 'admin'
+                // roles can read the entire 'timeEntries' list.
+                // An 'employee' role WILL get a PERMISSION_DENIED error here.
+                // For 'employee' role, you MUST query specifically for their data:
+                // const snapshot = await db.ref('timeEntries').orderByChild('userId').equalTo(currentUser.uid).once('value');
+                // This requires implementing role checking (e.g., via custom claims).
+                // For now, this code assumes the logged-in user has manager/admin read access to the list.
+                const snapshot = await db.ref('timeEntries').once('value');
+                const allEntriesObject = snapshot.val();
+                let allEntries = [];
+                if (allEntriesObject) {
+                    allEntries = Object.keys(allEntriesObject).map(key => ({ id: key, ...allEntriesObject[key] }));
+                }
+
+                // Populate filters based on *all fetched* data (even if user is employee)
+                // This might reveal names/projects employees shouldn't see if rules were stricter on list read
+                await populateFilters(allEntries);
+
+                // Apply client-side filtering
+                let filteredEntries = allEntries;
+                if (employeeFilterValue) {
+                    filteredEntries = filteredEntries.filter(entry => entry.employeeName === employeeFilterValue);
+                }
+                if (projectFilterValue) {
+                    filteredEntries = filteredEntries.filter(entry => entry.projectName === projectFilterValue);
+                }
+                // ** Employee Data Filtering (if rules were strictly enforced client-side) **
+                // If implementing role check:
+                // if (userRole === 'employee') {
+                //    filteredEntries = filteredEntries.filter(entry => entry.userId === currentUser.uid);
+                // }
+
+
+                // Calculate Summary Stats from filtered data
+                const totalHours = d3.sum(filteredEntries, d => d.durationHours);
+                const totalEntriesCount = filteredEntries.length;
+                document.getElementById('totalHours').textContent = totalHours.toFixed(2);
+                document.getElementById('totalEntriesCount').textContent = totalEntriesCount;
+
+                // Aggregate data for chart using filtered data
+                const hoursByProject = d3.rollup(filteredEntries, v => d3.sum(v, d => d.durationHours), d => d.projectName);
+                const chartData = Array.from(hoursByProject, ([projectName, totalHours]) => ({ projectName, totalHours }))
+                                     .sort((a, b) => d3.descending(a.totalHours, b.totalHours));
+                drawBarChart(chartData);
+
+                // Update datalists based on all fetched data
+                await populateDataLists(allEntries);
+
+            } catch (error) {
+                console.error("Error loading/processing dashboard data:", error);
+                 if (error.code === 'PERMISSION_DENIED') {
+                     showNotification("Permission Denied: You don't have access to read this data.", "error");
+                     // Clear dashboard as data fetch failed
+                     clearDashboard();
+                 } else {
+                    showNotification("Could not load dashboard data. Check console.", "error");
+                    clearDashboard();
+                 }
+            } finally {
+                isLoading = false;
+                showLoadingIndicator(false);
+            }
+        }
+
+         // Function to clear dashboard elements
+        function clearDashboard() {
+            document.getElementById('totalHours').textContent = '0.00';
+            document.getElementById('totalEntriesCount').textContent = '0';
+            drawBarChart([]); // Draw empty chart
+            // Optionally clear filters and datalists
+            populateSelect('employeeFilter', [], 'All Employees');
+            populateSelect('projectFilter', [], 'All Projects');
+            populateDatalist('employeeDataList', []);
+            populateDatalist('projectDataList', []);
+        }
+
+
+        // --- UI Population ---
+        async function populateFilters(data) {
+            const employees = [...new Set(data.map(item => item.employeeName).filter(Boolean))].sort();
+            populateSelect('employeeFilter', employees, 'All Employees');
+            const projects = [...new Set(data.map(item => item.projectName).filter(Boolean))].sort();
+            populateSelect('projectFilter', projects, 'All Projects');
+        }
+
+        async function populateDataLists(data) {
+            const employees = [...new Set(data.map(item => item.employeeName).filter(Boolean))].sort();
+            populateDatalist('employeeDataList', employees);
+            const projects = [...new Set(data.map(item => item.projectName).filter(Boolean))].sort();
+            populateDatalist('projectDataList', projects);
+        }
+
+        function populateSelect(selectId, optionsArray, defaultOptionText) {
+            const selectElement = document.getElementById(selectId);
+            if(!selectElement) return; // Guard against null element
+            const currentValue = selectElement.value;
+            selectElement.innerHTML = `<option value="">${defaultOptionText}</option>`;
+            optionsArray.forEach(optionValue => {
+                const option = document.createElement('option');
+                option.value = optionValue; option.textContent = optionValue;
+                selectElement.appendChild(option);
+            });
+            selectElement.value = Array.from(selectElement.options).some(opt => opt.value === currentValue) ? currentValue : "";
+        }
+
+        function populateDatalist(datalistId, optionsArray) {
+            const datalist = document.getElementById(datalistId);
+             if(!datalist) return; // Guard against null element
+            datalist.innerHTML = '';
+            optionsArray.forEach(optionValue => {
+                const option = document.createElement('option');
+                option.value = optionValue;
+                datalist.appendChild(option);
+            });
+        }
+
+        // --- D3 Chart Drawing ---
+        function drawBarChart(data) {
+            const svg = d3.select("#hoursChart");
+            svg.selectAll("*").remove();
+            if (!data || data.length === 0) {
+                svg.append("text").attr("x", "50%").attr("y", "50%").attr("text-anchor", "middle")
+                   .style("font-size", "1rem").style("fill", "#a0aec0").text("No time entries match the current filters.");
+                return;
+            }
+            const bounds = svg.node().getBoundingClientRect();
+            const margin = { top: 30, right: 30, bottom: 80, left: 70 };
+            const width = bounds.width - margin.left - margin.right;
+            const height = bounds.height - margin.top - margin.bottom;
+            if (width <= 0 || height <= 0) { console.warn("Chart dimensions too small."); svg.append("text").attr("x", 10).attr("y", 20).text("Chart area too small."); return; }
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+            const x = d3.scaleBand().domain(data.map(d => d.projectName)).range([0, width]).padding(0.3);
+            const y = d3.scaleLinear().domain([0, d3.max(data, d => d.totalHours) || 1]).nice().range([height, 0]);
+            g.append("g").attr("class", "x-axis").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x))
+                .selectAll("text").attr("transform", "rotate(-45)").style("text-anchor", "end").attr("dx", "-0.8em").attr("dy", "0.15em");
+            g.append("g").attr("class", "y-axis").call(d3.axisLeft(y).ticks(Math.max(3, Math.floor(height / 40))).tickFormat(d => d.toFixed(1) + "h"));
+            g.append("text").attr("transform", "rotate(-90)").attr("y", 0 - margin.left + 15).attr("x", 0 - (height / 2))
+                .attr("dy", "1em").style("text-anchor", "middle").style("font-size", "0.95rem").style("fill", "#4a5568").text("Total Hours");
+            g.selectAll(".bar").data(data).enter().append("rect").attr("class", "bar")
+                .attr("x", d => x(d.projectName)).attr("y", d => y(d.totalHours)).attr("width", x.bandwidth()).attr("height", d => Math.max(0, height - y(d.totalHours)))
+                .attr("fill", "#4299e1")
+                .on("mouseover", function (event, d) {
+                    d3.select(this).attr("fill", "#2b6cb0"); tooltip.transition().duration(200).style("opacity", 0.9);
+                    tooltip.html(`<strong>${escapeHtml(d.projectName)}</strong><br>Hours: ${d.totalHours.toFixed(2)}`)
+                        .style("left", `${event.pageX + 10}px`).style("top", `${event.pageY - 28}px`);
+                })
+                .on("mouseout", function () { d3.select(this).attr("fill", "#4299e1"); tooltip.transition().duration(500).style("opacity", 0); });
+        }
+
+        // --- Import / Export ---
+        async function exportCSV() {
+            if (!currentUser) { showNotification("Please log in to export data.", "error"); return; }
+            if (!db) { showNotification("Database not initialized.", "error"); return; }
+            showLoadingIndicator(true);
+            try {
+                // Fetch ALL data for export, regardless of current filters or role (assuming export needs everything)
+                // ** SECURITY NOTE: This might fetch data the user cannot normally see in the UI if they are an 'employee'.
+                // Consider if export should be role-restricted or only export data the user can access.
+                const snapshot = await db.ref('timeEntries').once('value');
+                const allEntriesObject = snapshot.val();
+                if (!allEntriesObject) { showNotification("No data to export.", "info"); return; }
+                const allEntries = Object.keys(allEntriesObject).map(key => ({ firebaseId: key, ...allEntriesObject[key] }));
+
+                const headers = ["firebaseId", "userId", "employeeName", "projectName", "startTimeISO", "endTimeISO", "durationHours", "createdAt"];
+                let csvContent = headers.join(",") + "\n";
+                allEntries.forEach(entry => {
+                    const row = headers.map(header => {
+                        let value = entry[header] === null || entry[header] === undefined ? '' : entry[header];
+                        if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                            value = `"${value.replace(/"/g, '""')}"`;
+                        }
+                        return value;
+                    });
+                    csvContent += row.join(",") + "\n";
+                });
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url); link.setAttribute("download", `time_entries_export_${new Date().toISOString().slice(0,10)}.csv`);
+                link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
+                showNotification("CSV export started.", "success");
+            } catch (error) {
+                console.error("Error exporting CSV:", error);
+                 if (error.code === 'PERMISSION_DENIED') {
+                     showNotification("Permission Denied: You don't have access to export all data.", "error");
+                 } else {
+                    showNotification("Failed to export CSV. Check console.", "error");
+                 }
+            } finally { showLoadingIndicator(false); }
+        }
+
+        // --- Utility Functions ---
+        function escapeHtml(unsafe) {
+            if (typeof unsafe !== 'string') return unsafe;
+            return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function showNotification(message, type = 'info') {
+            const notificationArea = document.getElementById('notification-area');
+            if (!notificationArea) return;
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`; notification.textContent = message;
+            notificationArea.prepend(notification);
+            setTimeout(() => {
+                notification.classList.add('fade-out');
+                notification.addEventListener('transitionend', () => notification.remove());
+            }, 3500);
+        }
+
+        function showLoadingIndicator(show) {
+             if (!loadingOverlay) return;
+             loadingOverlay.classList.toggle('visible', show);
+        }
+
+        // --- App Initialization ---
+        document.addEventListener('DOMContentLoaded', initApp);
+
+    </script>
+
+</body>
+</html>
